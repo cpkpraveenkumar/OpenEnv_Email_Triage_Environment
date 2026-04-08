@@ -1,3 +1,12 @@
+---
+title: OpenEnv Email Triage Environment
+emoji: 📧
+colorFrom: blue
+colorTo: green
+sdk: docker
+tags: ["openenv"]
+---
+
 # OpenEnv Email Triage Environment
 
 A real-world environment that simulates email triage and workflow management for AI agents.
@@ -74,9 +83,18 @@ export OPENAI_API_KEY="your_api_key"
 python baseline.py
 ```
 
+Baseline performance scores (using GPT-3.5-turbo):
+- Easy: 1.000 (perfect classification)
+- Medium: 0.985 (high-quality replies)
+- Hard: 0.000 (needs improvement)
+
 Scores are deterministic with the built-in heuristic when API key is absent.
 
 ## Hugging Face Space
+The environment is deployed on Hugging Face Spaces for easy access and testing.
+
+**Live URL**: https://praveenkumar2007-openenv-email-triage-environment.hf.space/
+
 1. create new Space with container runtime.
 2. push repository.
 3. ensure `Dockerfile` is picked.
