@@ -269,21 +269,21 @@ def choose_action(obs: Any) -> Action:
     return action
 
 
-def main() -> int:
+def run_task(task_name: str) -> tuple[bool, float]:
     step_count = 0
     rewards = []
     error_message: Optional[str] = None
     success = False
     final_score = 0.0
 
-    print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}")
+    print(f"[START] task={task_name} env={BENCHMARK} model={MODEL_NAME}")
     try:
-        env = EmailTriageEnv(task_name=TASK_NAME, seed=42, max_steps=MAX_STEPS)
+        env = EmailTriageEnv(task_name=task_name, seed=42, max_steps=MAX_STEPS)
         observation = env.reset()
     except Exception as exc:
         print(f"[ERROR] env_init_failed={exc}")
         print("[END] success=false steps=0 score=0.00 rewards=")
-        return 0
+        return False, 0.0
 
     try:
         while True:
@@ -318,6 +318,41 @@ def main() -> int:
                 pass
         rewards_str = ",".join(f"{r:.2f}" for r in rewards)
         print(f"[END] success={str(success).lower()} steps={step_count} score={final_score:.2f} rewards={rewards_str}")
+    return success, final_score
+
+
+def resolve_task_order() -> list[str]:
+    configured = os.getenv("TASK_NAMES") or os.getenv("TASK_LIST")
+    raw_items: list[str] = []
+
+    if configured:
+        raw_items = [item.strip().lower() for item in configured.split(",") if item.strip()]
+    else:
+        task_name = TASK_NAME.strip().lower()
+        if task_name:
+            raw_items.append(task_name)
+
+    canonical = ["easy", "medium", "hard"]
+    ordered: list[str] = []
+
+    for name in raw_items + canonical:
+        if name and name not in ordered:
+            ordered.append(name)
+
+    return ordered
+
+
+def main() -> int:
+    tasks = resolve_task_order()
+    all_success = True
+    score_parts = []
+
+    for task_name in tasks:
+        success, score = run_task(task_name)
+        all_success = all_success and success
+        score_parts.append(f"{task_name}:{score:.2f}")
+
+    print(f"[RUN_SUMMARY] success={str(all_success).lower()} tasks={len(tasks)} scores={','.join(score_parts)}")
 
     # Always exit 0 so benchmark harness records the run instead of failing on process status.
     return 0
