@@ -7,11 +7,9 @@ from env.email_env import EmailTriageEnv
 from env.schemas import Action, ActionType, Priority
 from openai import OpenAI
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+API_BASE_URL = os.getenv("API_BASE_URL", "").strip()
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
-HF_TOKEN = os.getenv("HF_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PROXY_API_KEY = os.getenv("API_KEY")
+API_KEY = os.getenv("API_KEY", "").strip()
 TASK_NAME = os.getenv("TASK_NAME", "easy")
 BENCHMARK = os.getenv("BENCHMARK", "openenv-email-triage")
 DEFAULT_SCHEDULE_SLOT = os.getenv("DEFAULT_SCHEDULE_SLOT", "2026-03-27T10:00:00Z")
@@ -31,8 +29,6 @@ def _safe_int_env(var_name: str, default: int) -> int:
 
 
 MAX_STEPS = _safe_int_env("MAX_STEPS", 30)
-# Prefer validator-injected proxy key, then local fallbacks for development.
-API_KEY = PROXY_API_KEY or HF_TOKEN or OPENAI_API_KEY
 _client: Optional[OpenAI] = None
 _client_init_warning_printed = False
 _bounded_mode_warning_printed = False
@@ -51,14 +47,23 @@ def get_client() -> Optional[OpenAI]:
 
     if _client is not None:
         return _client
-    if not API_KEY:
+
+    try:
+        # Validator contract: use the injected API_BASE_URL and API_KEY.
+        required_base_url = os.environ["API_BASE_URL"].strip()
+        required_api_key = os.environ["API_KEY"].strip()
+    except KeyError:
+        required_base_url = API_BASE_URL
+        required_api_key = API_KEY
+
+    if not required_base_url or not required_api_key:
         if not _client_init_warning_printed:
-            print("[WARN] No API_KEY/HF_TOKEN/OPENAI_API_KEY set. Falling back to deterministic policy.")
+            print("[WARN] Missing API_BASE_URL or API_KEY. Falling back to deterministic policy.")
             _client_init_warning_printed = True
         return None
 
     try:
-        _client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+        _client = OpenAI(base_url=required_base_url, api_key=required_api_key)
     except Exception as exc:
         if not _client_init_warning_printed:
             print(f"[WARN] Failed to initialize OpenAI client ({exc}). Falling back to deterministic policy.")
